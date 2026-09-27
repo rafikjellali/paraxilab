@@ -145,13 +145,17 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({
           </h3>
         </div>
 
-        {/* PROMINENT WATERMARK: رفيق جلالي */}
-        <div className="flex items-center gap-2 bg-white/90 border border-slate-300 px-3 py-1 rounded-md shadow-xs">
-          <span className="text-xs font-medium text-slate-500">إشراف وتطوير:</span>
-          <span className="text-sm font-extrabold text-blue-700 tracking-wide">
+        {/* PROMINENT LUMINOUS WATERMARK: رفيق جلالي */}
+        <div className="flex items-center gap-2 bg-white/95 border border-cyan-300 px-3 py-1 rounded-lg shadow-sm animate-luminous-glow">
+          <span className="relative flex h-2.5 w-2.5 shrink-0">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-cyan-500"></span>
+          </span>
+          <span className="text-xs font-semibold text-slate-500">إشراف وتطوير:</span>
+          <span className="text-sm font-black text-cyan-700 animate-neon-watermark tracking-wide">
             رفيق جلالي
           </span>
-          <span className="text-[11px] text-slate-400 font-mono">Rafik Jellali</span>
+          <span className="text-[10px] text-cyan-700 font-mono bg-cyan-50 px-1 rounded border border-cyan-200">VR LAB</span>
         </div>
       </div>
 

@@ -7,7 +7,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import confetti from 'canvas-confetti';
 import { Lab3DView } from './components/Lab3DView';
 import { Whiteboard } from './components/Whiteboard';
-import { DualControlPanel } from './components/DualControlPanel';
+import { CompactControlsBar } from './components/CompactControlsBar';
 import { PraxiStepsGuide } from './components/PraxiStepsGuide';
 import { LabReportModal } from './components/LabReportModal';
 import { InteractiveQuizModal } from './components/InteractiveQuizModal';
@@ -16,7 +16,6 @@ import {
   DataPoint,
   ExperimentParams,
   FlowRate,
-  IndicatorType,
   ProtocolStep,
 } from './types/lab';
 import { calculatePH, getSolutionColor, getTheoreticalEquivalenceVolume } from './utils/chemistry';
@@ -27,8 +26,9 @@ import {
   RotateCcw,
   Volume2,
   VolumeX,
-  Glasses,
-  Sparkles,
+  LineChart,
+  ListOrdered,
+  X,
 } from 'lucide-react';
 
 const initialParams: ExperimentParams = {
@@ -126,15 +126,19 @@ export default function App() {
   const [dataPoints, setDataPoints] = useState<DataPoint[]>([]);
   const [isAiProcessing, setIsAiProcessing] = useState<boolean>(false);
 
+  // Panels visibility (Whiteboard & Steps Guide)
+  const [isWhiteboardOpen, setIsWhiteboardOpen] = useState<boolean>(false);
+  const [isStepsGuideOpen, setIsStepsGuideOpen] = useState<boolean>(false);
+
   // Modals
   const [isReportOpen, setIsReportOpen] = useState<boolean>(false);
   const [isQuizOpen, setIsQuizOpen] = useState<boolean>(false);
 
-  // Refs for continuous flow timer
+  // Flow timer ref
   const flowTimerRef = useRef<number | null>(null);
   const hasTriggeredEquivalenceConfetti = useRef<boolean>(false);
 
-  // Calculations
+  // Physical Chemistry Calculations
   const currentPH = calculatePH(volumeDispensed, params);
   const solutionColor = getSolutionColor(currentPH, params.indicator, indicatorDrops);
   const theoreticalVeq = getTheoreticalEquivalenceVolume(params);
@@ -158,19 +162,17 @@ export default function App() {
       hasTriggeredEquivalenceConfetti.current = true;
       labAudio.playSuccessChime();
 
-      // Trigger Confetti
       try {
         confetti({
-          particleCount: 70,
-          spread: 80,
+          particleCount: 80,
+          spread: 85,
           origin: { y: 0.6 },
-          colors: ['#ec4899', '#3b82f6', '#10b981', '#fbbf24'],
+          colors: ['#0284c7', '#38bdf8', '#10b981', '#f43f5e'],
         });
       } catch {
         // ignore
       }
 
-      // Mark Step 6 completed
       setSteps((prev) =>
         prev.map((s, idx) => (idx === 4 || idx === 5 ? { ...s, completed: true } : s))
       );
@@ -192,7 +194,6 @@ export default function App() {
           return next;
         });
 
-        // Trigger drop sound occasionally
         if (Math.random() < 0.4) {
           labAudio.playDripSound();
         }
@@ -209,19 +210,17 @@ export default function App() {
     };
   }, [isFlowing, flowRate]);
 
-  // Add 1 precise drop (0.05 mL)
+  // Operational Handlers
   const handleAddOneDrop = () => {
     labAudio.playDripSound();
     setVolumeDispensed((prev) => Math.min(50, Number((prev + 0.05).toFixed(2))));
   };
 
-  // Toggle Flow
   const handleToggleFlow = () => {
     labAudio.playClickSound();
     setIsFlowing((prev) => !prev);
   };
 
-  // Refill Burette
   const handleRefillBurette = () => {
     labAudio.playGlassClink();
     setIsFlowing(false);
@@ -229,19 +228,16 @@ export default function App() {
     hasTriggeredEquivalenceConfetti.current = false;
   };
 
-  // Add Indicator drop
   const handleAddIndicatorDrop = () => {
     labAudio.playGlassClink();
     setIndicatorDrops((prev) => prev + 1);
   };
 
-  // Toggle Stirrer
   const handleToggleStirrer = () => {
     labAudio.playClickSound();
     setIsStirrerActive((prev) => !prev);
   };
 
-  // Record Data Point into table & chart
   const handleRecordDataPoint = (recordedBy: 'user' | 'ai' = 'user') => {
     labAudio.playClickSound();
     const newPt: DataPoint = {
@@ -260,7 +256,6 @@ export default function App() {
     setDataPoints((prev) => [...prev, newPt]);
   };
 
-  // Reset Flask Solution
   const handleResetFlask = () => {
     labAudio.playGlassClink();
     setIsFlowing(false);
@@ -271,7 +266,6 @@ export default function App() {
   };
 
   // AI ACTIONS
-  // 1. Auto Titrate to Equivalence Point
   const handleAiAutoTitrate = () => {
     setIsAiProcessing(true);
     setIsFlowing(false);
@@ -289,8 +283,6 @@ export default function App() {
         setIsAiProcessing(false);
         labAudio.playSuccessChime();
         labAudio.speakArabic('تم الوصول إلى نقطة التكافؤ بدقة عند حجم عشرين مليلتر.');
-
-        // Record point
         handleRecordDataPoint('ai');
       } else {
         setVolumeDispensed(Number(current.toFixed(2)));
@@ -299,7 +291,6 @@ export default function App() {
     }, 60);
   };
 
-  // 2. Full scan 15 points
   const handleAiFullScan = () => {
     setIsAiProcessing(true);
     setIsFlowing(false);
@@ -326,19 +317,12 @@ export default function App() {
       setIsAiProcessing(false);
       labAudio.playSuccessChime();
       setSteps((prev) => prev.map((s) => ({ ...s, completed: true })));
+      setIsWhiteboardOpen(true); // Open whiteboard to show the scanned curve
     }, 800);
   };
 
-  // 3. AI Calculate Concentration
-  const handleAiCalculate = () => {
-    setIsReportOpen(true);
-    labAudio.playClickSound();
-    labAudio.speakArabic('تم حساب التركيز المولي للحمض وهو صفر فاصل واحد مول لكل لتر.');
-  };
-
-  // 4. AI Spoken Guidance
   const handleAiSpeakGuidance = () => {
-    const text = `أهلاً بك في مختبر رفيق جلالي الافتراضي. نحن الآن في المرحلة الخامسة للمعايرة. حجم هيدروكسيد الصوديوم المضاف هو ${volumeDispensed.toFixed(
+    const text = `أهلاً بك في مختبر رفيق جلالي الافتراضي. حجم هيدروكسيد الصوديوم المضاف هو ${volumeDispensed.toFixed(
       1
     )} مليلتر، وقيمة الـ بي إتش الحالية هي ${currentPH.toFixed(2)}. ${
       isEquivalenceReached
@@ -349,46 +333,84 @@ export default function App() {
   };
 
   return (
-    <div className="relative w-screen h-screen flex flex-col bg-slate-950 text-slate-100 overflow-hidden font-sans select-none">
-      {/* 1. TOP BAR CONTRACT: 3 ZONES */}
-      <header className="h-14 bg-slate-900/95 border-b border-slate-800 px-4 flex items-center justify-between z-30 shrink-0">
-        {/* Zone 1: Single text element Brand wordmark */}
-        <div className="flex items-center gap-2">
-          <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse"></span>
-          <h1 className="text-base md:text-lg font-black tracking-tight text-white flex items-center gap-1.5">
-            <span>PraxiLabs VR</span>
-            <span className="text-slate-500 font-normal">|</span>
-            <span className="text-cyan-400 font-bold">مختبر رفيق جلالي الافتراضي</span>
-          </h1>
+    <div className="relative w-screen h-screen flex flex-col bg-slate-100 text-slate-800 overflow-hidden font-sans select-none">
+      {/* 1. TOP HEADER: WHITE THEME WITH OPTICAL LUMINOUS WATERMARK */}
+      <header className="h-14 bg-white border-b border-slate-200/90 px-4 flex items-center justify-between z-30 shrink-0 shadow-xs">
+        {/* Brand & Optical Luminous Watermark in Header */}
+        <div className="flex items-center gap-3">
+          {/* Luminous Pulsing Watermark Badge */}
+          <div className="flex items-center gap-2 bg-slate-50 border border-cyan-300 px-3 py-1 rounded-xl shadow-xs animate-luminous-glow">
+            <span className="relative flex h-2.5 w-2.5 shrink-0">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-80"></span>
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-cyan-500"></span>
+            </span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-sm font-black text-cyan-700 animate-neon-watermark tracking-wide">
+                رفيق جلالي
+              </span>
+              <span className="text-[10px] font-mono font-bold text-cyan-600 bg-cyan-100/60 px-1 rounded">
+                PraxiLabs VR
+              </span>
+            </div>
+          </div>
+
+          <span className="hidden sm:inline text-xs font-bold text-slate-400">|</span>
+          <span className="hidden sm:inline text-xs font-semibold text-slate-600">
+            مختبر العلوم الافتراضي التفاعلي
+          </span>
         </div>
 
-        {/* Zone 2: Navigation Links */}
-        <nav className="hidden md:flex items-center gap-5 text-xs font-semibold text-slate-300">
+        {/* Center / Navigation Shortcuts */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setIsWhiteboardOpen((prev) => !prev)}
+            className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 shadow-xs ${
+              isWhiteboardOpen
+                ? 'bg-blue-600 text-white'
+                : 'bg-slate-50 text-blue-700 border border-blue-200 hover:bg-blue-50'
+            }`}
+          >
+            <LineChart className="w-3.5 h-3.5" />
+            <span>السبورة والمنحنى</span>
+          </button>
+
+          <button
+            onClick={() => setIsStepsGuideOpen((prev) => !prev)}
+            className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 shadow-xs ${
+              isStepsGuideOpen
+                ? 'bg-emerald-600 text-white'
+                : 'bg-slate-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-50'
+            }`}
+          >
+            <ListOrdered className="w-3.5 h-3.5" />
+            <span>دليل المراحل</span>
+          </button>
+
           <button
             onClick={() => setIsQuizOpen(true)}
-            className="hover:text-cyan-400 transition-colors flex items-center gap-1"
+            className="px-3 py-1.5 text-xs font-bold text-slate-700 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg transition-colors flex items-center gap-1.5 shadow-xs"
           >
-            <HelpCircle className="w-3.5 h-3.5 text-cyan-400" />
-            <span>اختبار المهارات العملية</span>
+            <HelpCircle className="w-3.5 h-3.5 text-cyan-600" />
+            <span>اختبار المهارات</span>
           </button>
 
           <button
             onClick={() => setIsReportOpen(true)}
-            className="hover:text-cyan-400 transition-colors flex items-center gap-1"
+            className="px-3.5 py-1.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 active:scale-95 rounded-lg transition-all flex items-center gap-1.5 shadow-xs"
           >
-            <FileText className="w-3.5 h-3.5 text-blue-400" />
-            <span>تقرير التجربة (PDF)</span>
+            <FileText className="w-3.5 h-3.5" />
+            <span>تقرير التجربة PDF</span>
           </button>
-        </nav>
+        </div>
 
-        {/* Zone 3: 1-2 Primary Action Buttons */}
-        <div className="flex items-center gap-2">
+        {/* Right Tools (Mute & Reset) */}
+        <div className="flex items-center gap-1.5">
           <button
             onClick={toggleMute}
             className={`p-2 rounded-lg border transition-colors ${
               isMuted
-                ? 'bg-rose-950/40 border-rose-800 text-rose-400'
-                : 'bg-slate-800 border-slate-700 text-slate-300 hover:text-white'
+                ? 'bg-rose-50 border-rose-200 text-rose-600'
+                : 'bg-slate-50 border-slate-200 text-slate-600 hover:text-slate-900'
             }`}
             title={isMuted ? 'تشغيل الصوت' : 'كتم الصوت'}
           >
@@ -396,16 +418,8 @@ export default function App() {
           </button>
 
           <button
-            onClick={() => setIsReportOpen(true)}
-            className="px-3.5 py-1.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-500 active:scale-95 rounded-lg transition-all flex items-center gap-1.5 shadow-md whitespace-nowrap"
-          >
-            <FileText className="w-3.5 h-3.5" />
-            <span>تصدير التقرير</span>
-          </button>
-
-          <button
             onClick={handleResetFlask}
-            className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors border border-slate-800"
+            className="p-2 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors border border-slate-200"
             title="إعادة ضبط التجربة من البداية"
           >
             <RotateCcw className="w-4 h-4" />
@@ -413,86 +427,105 @@ export default function App() {
         </div>
       </header>
 
-      {/* 2. MAIN WORKSPACE: Two-zone Stage (3D Canvas + Whiteboard) */}
-      <main className="flex-1 min-h-0 w-full p-2 md:p-3 grid grid-cols-1 lg:grid-cols-12 gap-3 overflow-hidden">
-        {/* Left Side: 3D VR Realistic Laboratory Scene (7 Cols on desktop) */}
-        <section className="lg:col-span-6 xl:col-span-7 h-full flex flex-col min-h-0 relative">
-          <Lab3DView
-            volumeDispensed={volumeDispensed}
-            solutionColor={solutionColor.hex}
-            isStirrerActive={isStirrerActive}
-            stirrerRpm={stirrerRpm}
-            pH={currentPH}
-            indicator={params.indicator}
-            indicatorDrops={indicatorDrops}
+      {/* 2. MAIN EXPERIMENT VIEW: TAKES MOST OF THE SCREEN ("حيث تكون التجربة تأخذ معظم الشاشة") */}
+      <main className="flex-1 min-h-0 w-full p-2 md:p-3 flex flex-col gap-2 overflow-hidden">
+        {/* Stage Container: 3D Lab Experiment (Dominant) + Optional Docked Whiteboard */}
+        <div className="flex-1 min-h-0 w-full flex gap-3 overflow-hidden">
+          {/* 3D Lab Simulation Canvas (Takes most of the screen) */}
+          <div className="flex-1 min-h-0 h-full relative transition-all duration-300">
+            <Lab3DView
+              volumeDispensed={volumeDispensed}
+              solutionColor={solutionColor.hex}
+              isStirrerActive={isStirrerActive}
+              stirrerRpm={stirrerRpm}
+              pH={currentPH}
+              indicator={params.indicator}
+              indicatorDrops={indicatorDrops}
+              isFlowing={isFlowing}
+              flowRate={flowRate}
+              onAddOneDrop={handleAddOneDrop}
+              onToggleFlow={handleToggleFlow}
+              isVRMode={isVRMode}
+              onToggleVR={() => setIsVRMode((prev) => !prev)}
+            />
+          </div>
+
+          {/* Dockable Whiteboard (Opens smoothly alongside the 3D lab without hiding it) */}
+          {isWhiteboardOpen && (
+            <div className="w-full lg:w-[480px] xl:w-[540px] h-full flex flex-col shrink-0 animate-in slide-in-from-right duration-200">
+              <div className="relative h-full flex flex-col">
+                {/* Close Button on Whiteboard */}
+                <button
+                  onClick={() => setIsWhiteboardOpen(false)}
+                  className="absolute top-2 left-2 z-30 p-1.5 bg-white/90 hover:bg-slate-100 text-slate-500 hover:text-slate-800 rounded-lg border border-slate-300 shadow-sm transition-colors"
+                  title="إغلاق السبورة"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+
+                <Whiteboard
+                  dataPoints={dataPoints}
+                  currentVolume={volumeDispensed}
+                  currentPH={currentPH}
+                  params={params}
+                  onClearData={() => setDataPoints([])}
+                  equivalenceVolume={theoreticalVeq}
+                  isEquivalenceReached={isEquivalenceReached}
+                />
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* 3. COMPACT CONTROLS BAR: DIRECTLY UNDERNEATH THE EXPERIMENT ("وازرار التحكم تحتها بالضبط صغيرة") */}
+        <div className="shrink-0 w-full">
+          <CompactControlsBar
+            controlMode={controlMode}
+            onSetControlMode={setControlMode}
             isFlowing={isFlowing}
             flowRate={flowRate}
+            onSetFlowRate={setFlowRate}
             onAddOneDrop={handleAddOneDrop}
             onToggleFlow={handleToggleFlow}
-            isVRMode={isVRMode}
-            onToggleVR={() => setIsVRMode((prev) => !prev)}
+            onRefillBurette={handleRefillBurette}
+            isStirrerActive={isStirrerActive}
+            stirrerRpm={stirrerRpm}
+            onToggleStirrer={handleToggleStirrer}
+            onSetStirrerRpm={setStirrerRpm}
+            indicatorDrops={indicatorDrops}
+            onAddIndicatorDrop={handleAddIndicatorDrop}
+            onRecordDataPoint={() => handleRecordDataPoint('user')}
+            onAiAutoTitrate={handleAiAutoTitrate}
+            onAiFullScan={handleAiFullScan}
+            onAiSpeakGuidance={handleAiSpeakGuidance}
+            isAiProcessing={isAiProcessing}
+            isWhiteboardOpen={isWhiteboardOpen}
+            onToggleWhiteboard={() => setIsWhiteboardOpen((prev) => !prev)}
           />
-        </section>
+        </div>
 
-        {/* Right Side: Clean White Whiteboard with Rafik Jellali Watermark (5 Cols on desktop) */}
-        <section className="lg:col-span-6 xl:col-span-5 h-full flex flex-col min-h-0">
-          <Whiteboard
-            dataPoints={dataPoints}
-            currentVolume={volumeDispensed}
-            currentPH={currentPH}
-            params={params}
-            onClearData={() => setDataPoints([])}
-            equivalenceVolume={theoreticalVeq}
-            isEquivalenceReached={isEquivalenceReached}
-          />
-        </section>
+        {/* Collapsible Steps Guide Drawer (If opened) */}
+        {isStepsGuideOpen && (
+          <div className="shrink-0 w-full bg-white border border-slate-200 rounded-xl p-3 shadow-sm animate-in slide-in-from-bottom duration-150">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-bold text-slate-700">دليل المراحل المنهجية للتجربة:</span>
+              <button
+                onClick={() => setIsStepsGuideOpen(false)}
+                className="text-slate-400 hover:text-slate-600 text-xs font-bold"
+              >
+                إخفاء
+              </button>
+            </div>
+            <PraxiStepsGuide
+              steps={steps}
+              currentStepIndex={currentStepIndex}
+              onSelectStep={setCurrentStepIndex}
+              onNextStep={() => setCurrentStepIndex((prev) => Math.min(steps.length - 1, prev + 1))}
+              onPrevStep={() => setCurrentStepIndex((prev) => Math.max(0, prev - 1))}
+            />
+          </div>
+        )}
       </main>
-
-      {/* 3. BOTTOM DECK: Dual Control Panel + PraxiLabs Guide */}
-      <footer className="w-full bg-slate-950 border-t border-slate-800/80 px-2 md:px-3 py-2 z-20 shrink-0 flex flex-col gap-2 max-h-[38vh] overflow-y-auto">
-        <DualControlPanel
-          controlMode={controlMode}
-          onSetControlMode={setControlMode}
-          isFlowing={isFlowing}
-          flowRate={flowRate}
-          onSetFlowRate={setFlowRate}
-          onAddOneDrop={handleAddOneDrop}
-          onToggleFlow={handleToggleFlow}
-          onRefillBurette={handleRefillBurette}
-          isStirrerActive={isStirrerActive}
-          stirrerRpm={stirrerRpm}
-          onToggleStirrer={handleToggleStirrer}
-          onSetStirrerRpm={setStirrerRpm}
-          indicator={params.indicator}
-          indicatorDrops={indicatorDrops}
-          onAddIndicatorDrop={handleAddIndicatorDrop}
-          onRecordDataPoint={() => handleRecordDataPoint('user')}
-          onResetFlask={handleResetFlask}
-          onAiExecuteStep={() => {
-            if (currentStepIndex < steps.length - 1) {
-              setCurrentStepIndex((prev) => prev + 1);
-            }
-          }}
-          onAiAutoTitrateToEquivalence={handleAiAutoTitrate}
-          onAiFullScanCurve={handleAiFullScan}
-          onAiCalculateConcentration={handleAiCalculate}
-          onAiSpeakGuidance={handleAiSpeakGuidance}
-          isAiProcessing={isAiProcessing}
-          currentVolume={volumeDispensed}
-          currentPH={currentPH}
-          solutionColorName={solutionColor.nameAr}
-          isEquivalenceReached={isEquivalenceReached}
-          params={params}
-        />
-
-        <PraxiStepsGuide
-          steps={steps}
-          currentStepIndex={currentStepIndex}
-          onSelectStep={setCurrentStepIndex}
-          onNextStep={() => setCurrentStepIndex((prev) => Math.min(steps.length - 1, prev + 1))}
-          onPrevStep={() => setCurrentStepIndex((prev) => Math.max(0, prev - 1))}
-        />
-      </footer>
 
       {/* 4. MODALS */}
       <LabReportModal

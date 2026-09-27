@@ -53,6 +53,7 @@ export const Lab3DView: React.FC<Lab3DViewProps> = ({
   const dropsGroupRef = useRef<THREE.Group | null>(null);
   const phScreenCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const phScreenTextureRef = useRef<THREE.CanvasTexture | null>(null);
+  const watermarkLightRef = useRef<THREE.PointLight | null>(null);
 
   // Mouse interaction state
   const isDraggingRef = useRef(false);
@@ -69,7 +70,7 @@ export const Lab3DView: React.FC<Lab3DViewProps> = ({
 
     // 1. Scene setup
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x0b1120); // Deep modern lab slate
+    scene.background = new THREE.Color(0xf8fafc); // Clean bright white laboratory room
     sceneRef.current = scene;
 
     // 2. Camera setup
@@ -90,12 +91,12 @@ export const Lab3DView: React.FC<Lab3DViewProps> = ({
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     rendererRef.current = renderer;
 
-    // 4. Lighting setup (Three-point studio lighting for scientific glassware)
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.75);
+    // 4. Lighting setup (Bright high-tech laboratory lighting)
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.85);
     scene.add(ambientLight);
 
-    const keyLight = new THREE.DirectionalLight(0xfff8ee, 1.2);
-    keyLight.position.set(4, 6, 5);
+    const keyLight = new THREE.DirectionalLight(0xffffff, 1.3);
+    keyLight.position.set(4, 7, 5);
     keyLight.castShadow = true;
     keyLight.shadow.mapSize.width = 1024;
     keyLight.shadow.mapSize.height = 1024;
@@ -103,13 +104,19 @@ export const Lab3DView: React.FC<Lab3DViewProps> = ({
     keyLight.shadow.camera.far = 20;
     scene.add(keyLight);
 
-    const rimLight = new THREE.DirectionalLight(0x38bdf8, 0.9); // Cool cyan rim highlight
-    rimLight.position.set(-5, 4, -4);
+    const rimLight = new THREE.DirectionalLight(0x38bdf8, 0.7); // Soft cyan rim highlight
+    rimLight.position.set(-5, 5, -4);
     scene.add(rimLight);
 
-    const fillLight = new THREE.DirectionalLight(0xffffff, 0.5);
-    fillLight.position.set(0, -2, 4);
+    const fillLight = new THREE.DirectionalLight(0xffffff, 0.6);
+    fillLight.position.set(0, -1, 4);
     scene.add(fillLight);
+
+    // Optical Watermark Pulsing Point Light in 3D (تشتعل وتطفأ)
+    const watermarkLight = new THREE.PointLight(0x0284c7, 1.0, 6);
+    watermarkLight.position.set(0, 1.5, 1.2);
+    scene.add(watermarkLight);
+    watermarkLightRef.current = watermarkLight;
 
     // 5. Build Environment & Lab Apparatus
     buildLabScene(scene);
@@ -122,6 +129,12 @@ export const Lab3DView: React.FC<Lab3DViewProps> = ({
       animFrameRef.current = requestAnimationFrame(animate);
       const delta = (time - lastTime) / 1000;
       lastTime = time;
+
+      // Animate 3D Watermark Light physically turning on and off (تشتعل وتطفأ)
+      if (watermarkLightRef.current) {
+        const pulse = Math.pow(0.5 + 0.5 * Math.sin(time * 0.0025), 3);
+        watermarkLightRef.current.intensity = 0.15 + 1.45 * pulse;
+      }
 
       // Rotate stir bar if active
       if (stirBarMeshRef.current && isStirrerActive) {
@@ -344,9 +357,9 @@ export const Lab3DView: React.FC<Lab3DViewProps> = ({
     // 1. Laboratory Bench Table
     const tableGeo = new THREE.BoxGeometry(6.5, 0.2, 3.8);
     const tableMat = new THREE.MeshStandardMaterial({
-      color: 0x1e293b, // Dark laboratory epoxy countertop
-      roughness: 0.35,
-      metalness: 0.15,
+      color: 0xf1f5f9, // Clean bright laboratory countertop
+      roughness: 0.25,
+      metalness: 0.1,
     });
     const tableMesh = new THREE.Mesh(tableGeo, tableMat);
     tableMesh.position.set(0, 0.1, 0);
@@ -355,7 +368,7 @@ export const Lab3DView: React.FC<Lab3DViewProps> = ({
 
     // Bench bevel trim
     const trimGeo = new THREE.BoxGeometry(6.6, 0.05, 3.9);
-    const trimMat = new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.6, roughness: 0.3 });
+    const trimMat = new THREE.MeshStandardMaterial({ color: 0xcbd5e1, metalness: 0.4, roughness: 0.2 });
     const trimMesh = new THREE.Mesh(trimGeo, trimMat);
     trimMesh.position.set(0, 0.2, 0);
     scene.add(trimMesh);
@@ -655,7 +668,7 @@ export const Lab3DView: React.FC<Lab3DViewProps> = ({
   };
 
   return (
-    <div className="relative w-full h-full flex flex-col select-none overflow-hidden bg-slate-950 rounded-xl border border-slate-800 shadow-2xl">
+    <div className="relative w-full h-full flex flex-col select-none overflow-hidden bg-white rounded-2xl border border-slate-200 shadow-sm">
       {/* 3D Canvas Container */}
       <div
         ref={containerRef}
@@ -668,53 +681,51 @@ export const Lab3DView: React.FC<Lab3DViewProps> = ({
       >
         <canvas ref={canvasRef} className="w-full h-full block" />
 
-        {/* VR Watermark Overlay */}
-        <div className="absolute top-4 right-4 pointer-events-none z-10 flex flex-col items-end">
-          <div className="bg-slate-900/80 backdrop-blur-md px-3.5 py-1.5 rounded-lg border border-slate-700/60 shadow-lg flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-            <span className="text-xs font-semibold tracking-wide text-slate-200">
-              مختبر العلوم الافتراضي (PraxiLabs VR)
+        {/* LUMINOUS OPTICAL WATERMARK: تشتعل وتطفأ تحمل اسم رفيق جلالي */}
+        <div className="absolute top-3.5 right-3.5 z-20 pointer-events-none select-none">
+          <div className="relative flex items-center gap-2.5 bg-white/90 backdrop-blur-md px-4 py-2 rounded-xl border border-cyan-300 shadow-lg shadow-cyan-100/60 animate-luminous-glow">
+            {/* Optical Pulsing Neon Diode */}
+            <span className="relative flex h-3.5 w-3.5 shrink-0">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-80"></span>
+              <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-cyan-500 shadow-md shadow-cyan-400"></span>
             </span>
+
+            <div className="flex flex-col text-right">
+              <div className="text-sm md:text-base font-black tracking-wide text-cyan-700 animate-neon-watermark flex items-center gap-1.5">
+                <span>رفيق جلالي</span>
+                <span className="text-[10px] font-mono font-bold text-cyan-600 bg-cyan-50 px-1.5 py-0.5 rounded border border-cyan-200">
+                  VR LAB
+                </span>
+              </div>
+              <span className="text-[10px] font-semibold text-slate-500 tracking-wider">
+                مائية ضوئية تفاعلية • Rafik Jellali
+              </span>
+            </div>
           </div>
-          <span className="text-[11px] text-slate-400 mt-1 font-medium bg-slate-950/60 px-2 py-0.5 rounded border border-slate-800">
-            إشراف وتطوير: <strong className="text-cyan-400">رفيق جلالي</strong>
-          </span>
         </div>
 
-        {/* Floating Quick Action Bar on Canvas */}
-        <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between pointer-events-none z-10">
-          {/* Direct Drop Controls */}
-          <div className="flex items-center gap-2 pointer-events-auto bg-slate-900/90 backdrop-blur-md p-1.5 rounded-xl border border-slate-700/60 shadow-xl">
-            <button
-              onClick={onAddOneDrop}
-              className="px-3.5 py-2 text-xs font-bold text-white bg-cyan-600 hover:bg-cyan-500 active:scale-95 rounded-lg transition-all flex items-center gap-1.5 shadow-md"
-              title="إضافة قطرة واحدة (0.05 mL)"
-            >
-              <span className="text-base leading-none">💧</span>
-              <span>قطرة واحدة (0.05 mL)</span>
-            </button>
-
-            <button
-              onClick={onToggleFlow}
-              className={`px-3.5 py-2 text-xs font-bold text-white rounded-lg transition-all flex items-center gap-1.5 shadow-md active:scale-95 ${
-                isFlowing
-                  ? 'bg-rose-600 hover:bg-rose-500 ring-2 ring-rose-400/50'
-                  : 'bg-emerald-600 hover:bg-emerald-500'
-              }`}
-            >
-              <RotateCcw className={`w-3.5 h-3.5 ${isFlowing ? 'animate-spin' : ''}`} />
-              <span>{isFlowing ? 'إغلاق الصنبور' : 'فتح الصنبور'}</span>
-            </button>
+        {/* Top-Left HUD: Live Measurements & Camera View Switcher */}
+        <div className="absolute top-3.5 left-3.5 z-20 flex items-center gap-2 pointer-events-auto">
+          {/* Live Data Badge */}
+          <div className="bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-xl border border-slate-200 shadow-sm flex items-center gap-2 text-xs font-bold">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span className="text-slate-600">
+              V_b: <strong className="font-mono text-blue-600 font-black">{volumeDispensed.toFixed(2)} mL</strong>
+            </span>
+            <span className="text-slate-300">|</span>
+            <span className="text-slate-600">
+              pH: <strong className="font-mono text-cyan-600 font-black">{pH.toFixed(2)}</strong>
+            </span>
           </div>
 
-          {/* Camera View Switcher & VR Mode Toggle */}
-          <div className="flex items-center gap-1.5 pointer-events-auto bg-slate-900/90 backdrop-blur-md p-1.5 rounded-xl border border-slate-700/60 shadow-xl">
+          {/* Camera View Switcher */}
+          <div className="hidden sm:flex items-center gap-1 bg-white/90 backdrop-blur-md p-1 rounded-xl border border-slate-200 shadow-sm">
             <button
               onClick={() => setCameraPreset('closeup_flask')}
-              className={`px-2.5 py-1.5 text-xs font-medium rounded-lg transition-colors flex items-center gap-1 ${
+              className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-colors flex items-center gap-1 ${
                 activeCameraView === 'closeup_flask'
-                  ? 'bg-cyan-600 text-white'
-                  : 'text-slate-300 hover:text-white hover:bg-slate-800'
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
               }`}
               title="تركيز على الدورق ومحلول التفاعل"
             >
@@ -724,10 +735,10 @@ export const Lab3DView: React.FC<Lab3DViewProps> = ({
 
             <button
               onClick={() => setCameraPreset('closeup_burette')}
-              className={`px-2.5 py-1.5 text-xs font-medium rounded-lg transition-colors flex items-center gap-1 ${
+              className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-colors flex items-center gap-1 ${
                 activeCameraView === 'closeup_burette'
-                  ? 'bg-cyan-600 text-white'
-                  : 'text-slate-300 hover:text-white hover:bg-slate-800'
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
               }`}
               title="تركيز على السحاحة والصنبور"
             >
@@ -736,10 +747,10 @@ export const Lab3DView: React.FC<Lab3DViewProps> = ({
 
             <button
               onClick={() => setCameraPreset('orbit')}
-              className={`px-2.5 py-1.5 text-xs font-medium rounded-lg transition-colors flex items-center gap-1 ${
+              className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-colors flex items-center gap-1 ${
                 activeCameraView === 'orbit'
-                  ? 'bg-cyan-600 text-white'
-                  : 'text-slate-300 hover:text-white hover:bg-slate-800'
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
               }`}
               title="عرض ثلاثي الأبعاد حر (تدوير بالفأرة)"
             >
@@ -747,19 +758,19 @@ export const Lab3DView: React.FC<Lab3DViewProps> = ({
               <span>عرض 3D</span>
             </button>
 
-            <div className="w-[1px] h-5 bg-slate-700 mx-0.5" />
+            <div className="w-[1px] h-4 bg-slate-200 mx-0.5" />
 
             <button
               onClick={onToggleVR}
-              className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 shadow-md ${
+              className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all flex items-center gap-1 ${
                 isVRMode
-                  ? 'bg-purple-600 text-white ring-2 ring-purple-400'
-                  : 'bg-slate-800 text-purple-300 hover:bg-slate-700 hover:text-purple-200'
+                  ? 'bg-purple-600 text-white shadow-xs'
+                  : 'text-purple-700 bg-purple-50 hover:bg-purple-100'
               }`}
-              title="تفعيل وضع الواقع الافتراضي ونظارات VR"
+              title="تفعيل وضع الواقع الافتراضي VR"
             >
-              <Glasses className="w-4 h-4" />
-              <span>{isVRMode ? 'خروج من VR' : 'واقع افتراضي (VR)'}</span>
+              <Glasses className="w-3.5 h-3.5" />
+              <span>{isVRMode ? 'خروج VR' : 'واقع افتراضي (VR)'}</span>
             </button>
           </div>
         </div>
