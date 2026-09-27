@@ -1,0 +1,6 @@
+{
+  "name": "PraxiLabs VR - مختبر رفيق جلالي الافتراضي",
+  "description": "محاكاة مخبرية تفاعلية بأسلوب PraxiLabs وتقنيات الواقع الافتراضي للتجارب العلمية عن بعد مع تحكم ثنائي وسبورة بيضاء مائية بإشراف رفيق جلالي.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
